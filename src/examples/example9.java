@@ -1,20 +1,12 @@
-/*
- * Title:        CloudSim Toolkit
- * Description:  CloudSim (Cloud Simulation) Toolkit for Modeling and Simulation
- *               of Clouds
- * Licence:      GPL - http://www.gnu.org/copyleft/gpl.html
- *
- * Copyright (c) 2009, The University of Melbourne, Australia
- */
-
-
 package examples;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.cloudbus.cloudsim.Cloudlet;
 import org.cloudbus.cloudsim.CloudletSchedulerTimeShared;
@@ -28,25 +20,20 @@ import org.cloudbus.cloudsim.Storage;
 import org.cloudbus.cloudsim.UtilizationModel;
 import org.cloudbus.cloudsim.UtilizationModelFull;
 import org.cloudbus.cloudsim.Vm;
-import org.cloudbus.cloudsim.VmAllocationPolicySimple;
 import org.cloudbus.cloudsim.VmSchedulerTimeShared;
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
 
-/**
- * An example showing how to pause and resume the simulation,
- * and create simulation entities (a DatacenterBroker in this example)
- * dynamically.
- */
-public class CloudSimExample7 {
+
+public class example9 {
 
 	/** The cloudlet list. */
 	private static List<Cloudlet> cloudletList;
 
-	/** The vmlist. */
-	private static List<Vm> vmlist;
+	/** The vmList. */
+	private static List<Vm> vmList;
 
 	private static List<Vm> createVM(int userId, int vms, int idShift) {
 		//Creates a container to store VMs. This list is passed to the broker later
@@ -63,7 +50,7 @@ public class CloudSimExample7 {
 		//create VMs
 		Vm[] vm = new Vm[vms];
 
-		for(int i=0;i<vms;i++){
+		for(int i=0;i < vms;i++){
 			vm[i] = new Vm(idShift + i, userId, mips, pesNumber, ram, bw, size, vmm, new CloudletSchedulerTimeShared());
 			list.add(vm[i]);
 		}
@@ -96,13 +83,11 @@ public class CloudSimExample7 {
 	}
 
 
-	////////////////////////// STATIC METHODS ///////////////////////
-
 	/**
 	 * Creates main() to run this example
 	 */
 	public static void main(String[] args) {
-		Log.printLine("Starting CloudSimExample7...");
+		Log.printLine("Starting CloudSimExample8...");
 
 		try {
 			// First step: Initialize the CloudSim package. It should be called
@@ -114,11 +99,11 @@ public class CloudSimExample7 {
 			// Initialize the CloudSim library
 			CloudSim.init(num_user, calendar, trace_flag);
 
+			//GlobalBroker globalBroker = new GlobalBroker("GlobalBroker");
+
 			// Second step: Create Datacenters
 			//Datacenters are the resource providers in CloudSim. We need at list one of them to run a CloudSim simulation
-			@SuppressWarnings("unused")
 			Datacenter datacenter0 = createDatacenter("Datacenter_0");
-			@SuppressWarnings("unused")
 			Datacenter datacenter1 = createDatacenter("Datacenter_1");
 
 			//Third step: Create Broker
@@ -126,64 +111,28 @@ public class CloudSimExample7 {
 			int brokerId = broker.getId();
 
 			//Fourth step: Create VMs and Cloudlets and send them to broker
-			vmlist = createVM(brokerId, 5, 0); //creating 5 vms
-			cloudletList = createCloudlet(brokerId, 300, 0); // creating 10 cloudlets
+			vmList = createVM(brokerId, 5, 0); //creating 5 vms
+			cloudletList = createCloudlet(brokerId, 10, 0); // creating 10 cloudlets
 
-			broker.submitVmList(vmlist);
+			broker.submitVmList(vmList);
 			broker.submitCloudletList(cloudletList);
-
-			// A thread that will create a new broker at 200 clock time
-			Runnable monitor = new Runnable() {
-				@Override
-				public void run() {
-					CloudSim.pauseSimulation(200);
-					while (true) {
-						if (CloudSim.isPaused()) {
-							break;
-						}
-						try {
-							Thread.sleep(100);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-					}
-
-					Log.printLine("\n\n\n" + CloudSim.clock() + ": The simulation is paused for 5 sec \n\n");
-
-					try {
-						Thread.sleep(5000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-
-					DatacenterBroker broker = createBroker("Broker_1");
-					int brokerId = broker.getId();
-
-					//Create VMs and Cloudlets and send them to broker
-					vmlist = createVM(brokerId, 5, 100); //creating 5 vms
-					cloudletList = createCloudlet(brokerId, 10, 100); // creating 10 cloudlets
-
-					broker.submitVmList(vmlist);
-					broker.submitCloudletList(cloudletList);
-
-					CloudSim.resumeSimulation();
-				}
-			};
-
-			new Thread(monitor).start();
-			Thread.sleep(1000);
 
 			// Fifth step: Starts the simulation
 			CloudSim.startSimulation();
 
 			// Final step: Print results when simulation is over
 			List<Cloudlet> newList = broker.getCloudletReceivedList();
+			//newList.addAll(globalBroker.getBroker().getCloudletReceivedList());
 
 			CloudSim.stopSimulation();
 
 			printCloudletList(newList);
 
-			Log.printLine("CloudSimExample7 finished!");
+			//Print the debt of each user to each datacenter
+			datacenter0).printDebts();
+			datacenter1.printDebts();
+
+			Log.printLine(example9.class.getName() + " finished!");
 		}
 		catch (Exception e)
 		{
@@ -270,26 +219,97 @@ public class CloudSimExample7 {
 		// 6. Finally, we need to create a PowerDatacenter object.
 		Datacenter datacenter = null;
 		try {
-			datacenter = new Datacenter(name, characteristics, new VmAllocationPolicySimple(hostList), storageList, 0);
+			RoundRobinVMAllocationPolicy vm_policy = new RoundRobinVMAllocationPolicy(hostList);
+			datacenter = new Datacenter(name, characteristics, vm_policy, storageList, 0);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 		return datacenter;
 	}
+	
 
-	//We strongly encourage users to develop their own broker policies, to submit vms and cloudlets according
-	//to the specific rules of the simulated scenario
-	private static DatacenterBroker createBroker(String name){
+	public static class VmAllocationPolicyMinimum extends org.cloudbus.cloudsim.VmAllocationPolicy {
 
-		DatacenterBroker broker = null;
-		try {
-			broker = new DatacenterBroker(name);
-		} catch (Exception e) {
-			e.printStackTrace();
+		private Map<String, Host> vm_table = new HashMap<String, Host>();
+		
+		private final Hosts hosts;
+		private Datacenter datacenter;
+
+		public VmAllocationPolicyMinimum(List<? extends Host> list) {
+			super(list);
+			hosts = new Hosts(list);
+		}
+		
+		public void setDatacenter(Datacenter datacenter) {
+			this.datacenter = datacenter;
+		}
+		
+		public Datacenter getDatacenter() {
+			return datacenter;
+		}
+
+		@Override
+		public boolean allocateHostForVm(Vm vm) {
+
+			if (this.vm_table.containsKey(vm.getUid()))
+				return true;
+
+			boolean vm_allocated = false;
+			int tries = 0;
+			
+			do 
+			{
+				Host host = this.hosts.getWithMinimumNumberOfPesEquals(vm.getNumberOfPes());
+				vm_allocated = this.allocateHostForVm(vm, host);
+				
+			} while (!vm_allocated && tries++ < hosts.size());
+
+			return vm_allocated;
+		}
+
+		@Override
+		public boolean allocateHostForVm(Vm vm, Host host) 
+		{
+			if (host != null && host.vmCreate(vm)) 
+			{
+				vm_table.put(vm.getUid(), host);
+				Log.formatLine("%.4f: VM #" + vm.getId() + " has been allocated to the host#" + host.getId() + 
+						" datacenter #" + host.getDatacenter().getId() + "(" + host.getDatacenter().getName() + ") #", 
+						CloudSim.clock());
+				return true;
+			}
+			return false;
+		}
+
+		@Override
+		public List<Map<String, Object>> optimizeAllocation(List<? extends Vm> vmList) {
 			return null;
 		}
-		return broker;
+
+		@Override
+		public void deallocateHostForVm(Vm vm) {
+			Host host = this.vm_table.remove(vm.getUid());
+			
+			if (host != null)
+			{
+				host.vmDestroy(vm);
+			}
+		}
+
+		@Override
+		public Host getHost(Vm vm) {
+			return this.vm_table.get(vm.getUid());
+		}
+
+		@Override
+		public Host getHost(int vmId, int userId) {
+			return this.vm_table.get(Vm.getUid(userId, vmId));
+		}
+	}
+
+	
+	private static DatacenterBroker createBroker(String name) throws Exception{
+		return new RoundRobinDatacenterBroker(name);
 	}
 
 	/**
@@ -319,6 +339,5 @@ public class CloudSimExample7 {
 						indent + indent + dft.format(cloudlet.getExecStartTime())+ indent + indent + indent + dft.format(cloudlet.getFinishTime()));
 			}
 		}
-
 	}
 }
